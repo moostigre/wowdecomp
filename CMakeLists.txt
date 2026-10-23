@@ -54,6 +54,8 @@ if (WOWDECOMP_DISABLE_SIGNATURE_CHECKS)
     add_compile_definitions(DISABLE_SIGNATURE_CHECKS=1)
 endif ()
 
+option(WOWDECOMP_ISOLATED_CLIENT "Use local game data and a separate WowDecomp registry namespace" OFF)
+
 # Third-party code is linked, not decompiled, for now.
 if (EXISTS ${CMAKE_SOURCE_DIR}/ThirdParty/CMakeLists.txt)
     add_subdirectory(ThirdParty)
@@ -110,6 +112,14 @@ if (WIN32)
 endif ()
 if (WOWDECOMP_ARCH_64)
     add_subdirectory(Tools/XvidDecoder)
+endif ()
+
+if (WOWDECOMP_ISOLATED_CLIENT)
+    foreach (target Wow WowClient WowServices Storm)
+        if (TARGET ${target})
+            target_compile_definitions(${target} PRIVATE WOWDECOMP_ISOLATED_CLIENT=1)
+        endif ()
+    endforeach ()
 endif ()
 
 foreach (target Wow WowClient MapViewer M2Viewer GxTest MpqTest BlpTest DbcTest AssetCheck)

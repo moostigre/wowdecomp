@@ -53,6 +53,11 @@ PatchFiles::PatchFiles(const char* locale, bool flag) {
     for (int32_t pass = 0; pass <= 1; pass++) {
         for (uint32_t i = 0; i < sizeof(specs) / sizeof(specs[0]); i++) {
             PATCHARCHIVESPEC& spec = specs[i];
+#ifdef WOWDECOMP_ISOLATED_CLIENT
+            if (spec.m_useInstallPath || !SStrCmp(spec.m_directory, "..\\", 3)) {
+                continue;
+            }
+#endif
 
             if (spec.m_pass != pass || spec.m_flag != wanted) {
                 continue;

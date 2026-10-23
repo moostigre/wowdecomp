@@ -9,11 +9,19 @@
 
 // INLINED: [0x007704BE->0x007704E7, 0x00770595->0x007705BE]
 int32_t STORMAPI SRegGetBaseKey(uint32_t flags, char* buffer, uint32_t bufferchars) {
+#ifdef WOWDECOMP_ISOLATED_CLIENT
+    if (flags & SREG_BATTLE_NET) {
+        SStrCopy(buffer, "Software\\WowDecomp\\Battle.net\\", bufferchars);
+    } else {
+        SStrCopy(buffer, "Software\\WowDecomp\\Blizzard Entertainment\\", bufferchars);
+    }
+#else
     if (flags & SREG_BATTLE_NET) {
         SStrCopy(buffer, "Software\\Battle.net\\", bufferchars);
     } else {
         SStrCopy(buffer, "Software\\Blizzard Entertainment\\", bufferchars);
     }
+#endif
 
     return 1;
 }
