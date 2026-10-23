@@ -594,6 +594,9 @@ void SetPaths() {
 // VERIFY: fb9a1306 auto
 // OFFSET: 0x00402A50
 const char* GetInstallLocationString() {
+#ifdef WOWDECOMP_ISOLATED_CLIENT
+    return nullptr;
+#else
     if (!SFile::IsTrial()) {
         return nullptr;
     }
@@ -608,11 +611,17 @@ const char* GetInstallLocationString() {
     }
 
     return s_installLocation;
+#endif
 }
 
 // VERIFY: 1ebb13ac auto
 // OFFSET: 0x00402AA0
 static bool BuildDataFileName(int32_t directory, char* buffer, uint32_t size, const char* pattern, const char* locale) {
+#ifdef WOWDECOMP_ISOLATED_CLIENT
+    if (directory != 0) {
+        return false;
+    }
+#endif
     if (directory == 2) {
         if (!GetInstallLocationString()) {
             return false;
@@ -633,11 +642,14 @@ static bool BuildDataFileName(int32_t directory, char* buffer, uint32_t size, co
 // VERIFY: 4075680a manual
 // OFFSET: 0x00402B90
 bool CheckDataFilesExist() {
-    char installPath[1024] = {};
     char dataPath[1024];
-    char parentPath[1024];
 
     BuildDataFileName(0, dataPath, sizeof(dataPath), s_archives[17].m_name, "----");
+#ifdef WOWDECOMP_ISOLATED_CLIENT
+    return OsFileExists(dataPath);
+#else
+    char installPath[1024] = {};
+    char parentPath[1024];
     BuildDataFileName(1, parentPath, sizeof(parentPath), s_archives[17].m_name, "----");
 
     if (BuildDataFileName(2, installPath, sizeof(installPath), s_archives[17].m_name, "----")) {
@@ -645,6 +657,7 @@ bool CheckDataFilesExist() {
     }
 
     return OsFileExists(dataPath) || OsFileExists(parentPath);
+#endif
 }
 
 // VERIFY: 427545c4 manual

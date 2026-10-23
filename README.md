@@ -78,9 +78,12 @@ logger off in `WowClient` with `-DWOWCLIENT_CRASH_LOG=OFF`.
 
 | CMake option | Default | Effect |
 |---|---|---|
+| `WOWDECOMP_ISOLATED_CLIENT` | `OFF` | Restrict automatic archive discovery to local `Data` and use a separate `Software\WowDecomp` registry namespace |
 | `WOWDECOMP_DISABLE_SIGNATURE_CHECKS` | `OFF` | Skip the MPQ file and `.toc.sig` signature checks, so modified game data and interface files load |
 | `WOWCLIENT_CRASH_LOG` | `ON` | Build `WowClient` with the crash logger |
 | `WOWCLIENT_OUTPUT_OVERRIDE` | empty | Name the `WowClient` executable something other than `WowClient64` / `WowClient32` |
+
+For a separate development installation, configure with `-DWOWDECOMP_ISOLATED_CLIENT=ON` and copy its game data into its own `bin/Win/Data` directory. This mode skips parent-directory and registered retail-installation archive fallbacks; it keeps registry settings separate from the original client.
 
 ## Running
 
