@@ -1,0 +1,82 @@
+name: Test client compilation
+run-name: Client ${{ inputs.build_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: Portal build ID
+        required: true
+      source_sha:
+        description: Pinned wowdecomp source commit
+        required: true
+      module_options:
+        description: Validated CMake module options (JSON)
+        required: true
+      modules:
+        description: Selected module IDs (JSON)
+        required: true
+      lease:
+        description: One-time portal build lease
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: client-${{ inputs.build_id }}
+  cancel-in-progress: false
+jobs:
+  compile:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          path: source
+          persist-credentials: false
+      - name: Report Windows runner started
+        shell: pwsh
+        env:
+          BUILD_ID: ${{ inputs.build_id }}
+          BUILD_LEASE: ${{ inputs.lease }}
+          PORTAL_TOKEN: ${{ secrets.EXPANDED_CLIENT_BUILD_TOKEN }}
+        run: |
+          $headers = @{ Authorization="Bearer $env:PORTAL_TOKEN"; 'X-Build-Lease'=$env:BUILD_LEASE }
+          $body = @{ detail='Compiling Windows x64 client'; build_url="$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID" } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "https://test.expanded.space/internal/client-builds/$env:BUILD_ID/progress" -Headers $headers -ContentType 'application/json' -Body $body
+      - name: Compile and package pinned client
+        shell: pwsh
+        env:
+          BUILD_ID: ${{ inputs.build_id }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          MODULE_OPTIONS: ${{ inputs.module_options }}
+          SELECTED_MODULES: ${{ inputs.modules }}
+        run: ./scripts/BuildTestClient.ps1
+      - name: Publish downloadable client
+        shell: pwsh
+        env:
+          BUILD_ID: ${{ inputs.build_id }}
+          BUILD_LEASE: ${{ inputs.lease }}
+          PORTAL_TOKEN: ${{ secrets.EXPANDED_CLIENT_BUILD_TOKEN }}
+        run: |
+          $headers = @{ Authorization="Bearer $env:PORTAL_TOKEN"; 'X-Build-Lease'=$env:BUILD_LEASE }
+          Invoke-RestMethod -Method Post -Uri "https://test.expanded.space/internal/client-builds/$env:BUILD_ID/artifact" -Headers $headers -ContentType 'application/zip' -InFile "$env:RUNNER_TEMP/client.zip" -TimeoutSec 300
+      - name: Preserve CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-${{ inputs.build_id }}
+          path: ${{ runner.temp }}/client.zip
+          retention-days: 7
+      - name: Report unsuccessful build
+        if: failure() || cancelled()
+        shell: pwsh
+        env:
+          BUILD_ID: ${{ inputs.build_id }}
+          BUILD_LEASE: ${{ inputs.lease }}
+          PORTAL_TOKEN: ${{ secrets.EXPANDED_CLIENT_BUILD_TOKEN }}
+        run: |
+          $headers = @{ Authorization="Bearer $env:PORTAL_TOKEN"; 'X-Build-Lease'=$env:BUILD_LEASE }
+          $body = @{ detail='Windows compilation failed or was cancelled. See the GitHub build log.'; build_url="$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID" } | ConvertTo-Json
+          try { Invoke-RestMethod -Method Post -Uri "https://test.expanded.space/internal/client-builds/$env:BUILD_ID/failed" -Headers $headers -ContentType 'application/json' -Body $body } catch { Write-Warning 'Portal failure report was not accepted; consult the build log.' }
