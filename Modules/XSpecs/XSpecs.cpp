@@ -49,7 +49,14 @@ local function Install()
         end
         local tab = CreateFrame("CheckButton", name, PlayerTalentFrame, "PlayerSpecTabTemplate")
         tab:SetID(group+1)
-        PlayerSpecTab_Load(tab, "spec"..group)
+        local specIndex = "spec"..group
+        PlayerSpecTab_Load(tab, specIndex)
+        -- The stock talent/glyph hotkeys select through this ordered list.
+        if TALENT_SORT_ORDER then
+            local found=false
+            for _,key in ipairs(TALENT_SORT_ORDER) do if key==specIndex then found=true end end
+            if not found then table.insert(TALENT_SORT_ORDER, math.min(group,#TALENT_SORT_ORDER+1),specIndex) end
+        end
         local number = tab:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
         number:SetPoint("BOTTOMRIGHT",tab,"BOTTOMRIGHT",0,0)
         number:SetText(group)

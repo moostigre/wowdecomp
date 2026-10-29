@@ -62,6 +62,15 @@ ctest --test-dir /tmp/xspecs-tests --output-on-failure
 With a system Lua 5.1 library, the test build also creates `XSpecsUIBridgeTests`.
 Pass an extracted stock 3.3.5 `Blizzard_TalentUI.lua` to validate the native table
 installer against real FrameXML functions; game assets are not redistributed.
+To also execute the embedded module script with frame stand-ins and check tab
+visibility/selection for 1, 2, 3, 5 and 8 specs (including the pet tab), pass:
+
+```
+/tmp/xspecs-tests/XSpecsUIBridgeTests /path/to/Blizzard_TalentUI.lua \
+  Modules/XSpecs/XSpecs.cpp Modules/XSpecs/tests/UIBehavior.lua
+```
+
+The stand-ins do not validate rendered layouts or the game's secure UI rules.
 The module-host tests verify UI-ready callbacks repeat after Lua recreation but
 are delivered once per state. Windows builds and in-game checks are distinct:
 verify learning, reset, activation, action bars, glyphs, inspection, relog and UI
