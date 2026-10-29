@@ -1,3 +1,4 @@
+#include "TalentPacket.h"
 #include "TalentInfo.h"
 #include "WoW/Source/Object/ObjectClient/Unit_C.h"
 #include "WoW/Source/ObjectMgrClient/ObjectMgrClient.h"
@@ -36,7 +37,7 @@ TSFixedArray<TalentTabInfo*> CGTalentInfo::m_tabs;
 TSFixedArray<TalentTabInfo*> CGTalentInfo::m_petTabs;
 
 // STATIC: 0x00C21030
-CGTalentGroup_C CGTalentInfo::m_talentGroups[2];
+CGTalentGroup_C CGTalentInfo::m_talentGroups[TalentGroupCapacity];
 
 // STATIC: 0x00C210D8
 CGTalentGroup_C CGTalentInfo::m_petTalentGroup;
@@ -57,7 +58,7 @@ int32_t CGTalentInfo_Inspect::m_unspentTalentPoints;
 TSFixedArray<TalentTabInfo*> CGTalentInfo_Inspect::m_tabs;
 
 // STATIC: 0x00C21138
-CGTalentGroup_C CGTalentInfo_Inspect::m_talentGroups[2];
+CGTalentGroup_C CGTalentInfo_Inspect::m_talentGroups[TalentGroupCapacity];
 
 // VERIFY: 05fa25fb auto
 // OFFSET: 0x005C57C0
@@ -892,71 +893,26 @@ void CGTalentInfo::AddPreviewTalentPoints(uint32_t group, uint32_t tab, uint32_t
 
 // VERIFY: cf0844b0 auto
 // OFFSET: 0x005C9740
-static void ReadTalentGroups(CDataStore* msg, uint32_t* activeGroup, int32_t* unspent, CGTalentGroup_C* groups, uint32_t count, uint32_t* numGroups) {
-    if (activeGroup) {
-        *activeGroup = 0;
-    }
+static bool ReadTalentSnapshot(CDataStore* msg, TalentPackets::Snapshot& snapshot) {
+    if (!msg || msg->m_read > msg->m_size) return false;
+    const uint32_t start = msg->m_read;
+    const uint32_t remaining = msg->m_size - start;
+    if (!msg->FetchRead(start, remaining) || !msg->m_data) return false;
+    size_t consumed = 0;
+    if (!TalentPackets::Decode(msg->m_data + start - msg->m_base, remaining,
+        TalentGroupCapacity, snapshot, consumed)) return false;
+    msg->m_read = start + static_cast<uint32_t>(consumed);
+    return true;
+}
 
-    if (numGroups) {
-        *numGroups = 0;
-    }
-
-    if (unspent) {
-        *unspent = 0;
-    }
-
-    if (!msg || !groups) {
-        return;
-    }
-
-    uint32_t points;
-    msg->Get(points);
-
-    if (unspent) {
-        *unspent = static_cast<int32_t>(points) < 0 ? 0 : points;
-    }
-
-    uint8_t num;
-    msg->Get(num);
-
-    if (numGroups) {
-        *numGroups = num;
-    }
-
-    uint8_t active;
-    msg->Get(active);
-
-    if (activeGroup) {
-        *activeGroup = active;
-    }
-
-    for (uint8_t i = 0; i < num; i++) {
-        CGTalentGroup_C* group = i < count ? &groups[i] : nullptr;
-        uint8_t numTalents;
-        msg->Get(numTalents);
-
-        for (uint8_t j = 0; j < numTalents; j++) {
-            uint32_t talentId;
-            msg->Get(talentId);
-            uint8_t rank;
-            msg->Get(rank);
-
-            if (group) {
-                group->AddTalentItem(talentId, rank);
-            }
-        }
-
-        uint8_t numGlyphs;
-        msg->Get(numGlyphs);
-
-        for (uint8_t j = 0; j < numGlyphs; j++) {
-            uint16_t glyph;
-            msg->Get(glyph);
-
-            if (group && j < 6) {
-                group->m_glyphs[j] = glyph;
-            }
-        }
+static void ApplyTalentSnapshot(const TalentPackets::Snapshot& snapshot, uint32_t& active,
+    int32_t& unspent, CGTalentGroup_C* groups, uint32_t& count) {
+    active = snapshot.active;
+    unspent = static_cast<int32_t>(snapshot.unspent);
+    count = static_cast<uint32_t>(snapshot.groups.size());
+    for (uint32_t i = 0; i < count; ++i) {
+        for (const auto& talent : snapshot.groups[i].talents) groups[i].AddTalentItem(talent.id, talent.rank);
+        for (uint32_t j = 0; j < 6; ++j) groups[i].m_glyphs[j] = snapshot.groups[i].glyphs[j];
     }
 }
 
@@ -1030,7 +986,7 @@ void CGTalentInfo::ResetTalentGroups(int32_t pet) {
         return;
     }
 
-    for (uint32_t i = 0; i < 2; i++) {
+    for (uint32_t i = 0; i < TalentGroupCapacity; i++) {
         CGTalentInfo::m_talentGroups[i].Reset();
     }
 
@@ -1042,7 +998,7 @@ void CGTalentInfo::ResetTalentGroups(int32_t pet) {
 // VERIFY: b1d0ceef manual
 // OFFSET: 0x005C9AD0
 void CGTalentInfo_Inspect::Reset() {
-    for (uint32_t i = 0; i < 2; i++) {
+    for (uint32_t i = 0; i < TalentGroupCapacity; i++) {
         CGTalentInfo_Inspect::m_talentGroups[i].Reset();
     }
 
@@ -1076,7 +1032,7 @@ static void UpdateTalentGroups(const TSFixedArray<TalentTabInfo*>* tabs, CGTalen
 
     int32_t total = unspent;
 
-    if (activeGroup < numGroups) {
+    if (activeGroup < numGroups && activeGroup < count) {
         CGTalentGroup_C* group = &groups[activeGroup];
         int32_t spent = 0;
 
@@ -1119,7 +1075,7 @@ void CGTalentInfo::EnterWorld() {
     CGPlayer_C* player = ClntObjMgrGetActivePlayerObj();
     BuildTabInfo(player, &CGTalentInfo::m_tabs, 0);
     CGTalentInfo::m_tabsInitialized = 1;
-    UpdateTalentGroups(&CGTalentInfo::m_tabs, CGTalentInfo::m_talentGroups, 2, CGTalentInfo::m_activeTalentGroup, CGTalentInfo::m_numTalentGroups, CGTalentInfo::m_unspentTalentPoints);
+    UpdateTalentGroups(&CGTalentInfo::m_tabs, CGTalentInfo::m_talentGroups, TalentGroupCapacity, CGTalentInfo::m_activeTalentGroup, CGTalentInfo::m_numTalentGroups, CGTalentInfo::m_unspentTalentPoints);
 }
 
 // VERIFY: 62894563 auto
@@ -1154,13 +1110,15 @@ void CGTalentInfo::UpdateTalentData(CDataStore* msg) {
         return;
     }
 
+    TalentPackets::Snapshot snapshot;
+    if (!ReadTalentSnapshot(msg, snapshot)) return;
     uint32_t oldNumGroups = CGTalentInfo::m_numTalentGroups;
     uint32_t oldActiveGroup = CGTalentInfo::m_activeTalentGroup;
     CGTalentInfo::ResetTalentGroups(0);
-    ReadTalentGroups(msg, &CGTalentInfo::m_activeTalentGroup, &CGTalentInfo::m_unspentTalentPoints, CGTalentInfo::m_talentGroups, 2, &CGTalentInfo::m_numTalentGroups);
+    ApplyTalentSnapshot(snapshot, CGTalentInfo::m_activeTalentGroup, CGTalentInfo::m_unspentTalentPoints, CGTalentInfo::m_talentGroups, CGTalentInfo::m_numTalentGroups);
 
     if (CGTalentInfo::m_tabsInitialized) {
-        UpdateTalentGroups(&CGTalentInfo::m_tabs, CGTalentInfo::m_talentGroups, 2, CGTalentInfo::m_activeTalentGroup, CGTalentInfo::m_numTalentGroups, CGTalentInfo::m_unspentTalentPoints);
+        UpdateTalentGroups(&CGTalentInfo::m_tabs, CGTalentInfo::m_talentGroups, TalentGroupCapacity, CGTalentInfo::m_activeTalentGroup, CGTalentInfo::m_numTalentGroups, CGTalentInfo::m_unspentTalentPoints);
     }
 
     FrameScript_SignalEvent(SCRIPT_EVENT_PLAYER_TALENT_UPDATE, nullptr);
@@ -1205,21 +1163,24 @@ void CGTalentInfo_Inspect::SetInspectTarget(const WOWGUID& guid) {
     if (player) {
         BuildTabInfo(player, &CGTalentInfo_Inspect::m_tabs, 0);
         CGTalentInfo_Inspect::m_inspectTarget = guid;
-        UpdateTalentGroups(&CGTalentInfo_Inspect::m_tabs, CGTalentInfo_Inspect::m_talentGroups, 2, CGTalentInfo_Inspect::m_activeTalentGroup, CGTalentInfo_Inspect::m_numTalentGroups, CGTalentInfo_Inspect::m_unspentTalentPoints);
+        UpdateTalentGroups(&CGTalentInfo_Inspect::m_tabs, CGTalentInfo_Inspect::m_talentGroups, TalentGroupCapacity, CGTalentInfo_Inspect::m_activeTalentGroup, CGTalentInfo_Inspect::m_numTalentGroups, CGTalentInfo_Inspect::m_unspentTalentPoints);
     }
 }
 
 // VERIFY: 7870c364 auto
 // OFFSET: 0x005C9FF0
-void CGTalentInfo_Inspect::UpdateTalentData(CDataStore* msg) {
+bool CGTalentInfo_Inspect::UpdateTalentData(CDataStore* msg) {
     if (!msg) {
-        return;
+        return false;
     }
 
+    TalentPackets::Snapshot snapshot;
+    if (!ReadTalentSnapshot(msg, snapshot)) return false;
     CGTalentInfo_Inspect::Reset();
-    ReadTalentGroups(msg, &CGTalentInfo_Inspect::m_activeTalentGroup, &CGTalentInfo_Inspect::m_unspentTalentPoints, CGTalentInfo_Inspect::m_talentGroups, 2, &CGTalentInfo_Inspect::m_numTalentGroups);
+    ApplyTalentSnapshot(snapshot, CGTalentInfo_Inspect::m_activeTalentGroup, CGTalentInfo_Inspect::m_unspentTalentPoints, CGTalentInfo_Inspect::m_talentGroups, CGTalentInfo_Inspect::m_numTalentGroups);
 
     if (CGTalentInfo_Inspect::m_inspectTarget.m_guid) {
-        UpdateTalentGroups(&CGTalentInfo_Inspect::m_tabs, CGTalentInfo_Inspect::m_talentGroups, 2, CGTalentInfo_Inspect::m_activeTalentGroup, CGTalentInfo_Inspect::m_numTalentGroups, CGTalentInfo_Inspect::m_unspentTalentPoints);
+        UpdateTalentGroups(&CGTalentInfo_Inspect::m_tabs, CGTalentInfo_Inspect::m_talentGroups, TalentGroupCapacity, CGTalentInfo_Inspect::m_activeTalentGroup, CGTalentInfo_Inspect::m_numTalentGroups, CGTalentInfo_Inspect::m_unspentTalentPoints);
     }
+    return true;
 }

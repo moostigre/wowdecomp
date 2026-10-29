@@ -8122,7 +8122,7 @@ int32_t Packet_SMSG_INSPECT_TALENT(void* param, NETMESSAGE msgId, uint32_t time,
     *msg >> guid;
 
     if (guid == CGCharacterInfo::m_inspectTarget) {
-        CGTalentInfo_Inspect::UpdateTalentData(msg);
+        if (!CGTalentInfo_Inspect::UpdateTalentData(msg)) return 1;
         FrameScript_SignalEvent(SCRIPT_EVENT_INSPECT_TALENT_READY, nullptr);
 
         if (!s_inspectData) {

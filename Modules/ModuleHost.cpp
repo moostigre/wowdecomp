@@ -60,6 +60,7 @@ void Host::LuaCreated(lua_State* state) {
     // Pair destruction before replacing a state, including explicit UI reloads.
     if (m_lua) LuaDestroying(m_lua);
     m_lua = state;
+    m_uiReady = false;
     m_dispatching = true;
     for (const Module* module : m_order) if (module->luaCreated) module->luaCreated(state);
     m_dispatching = false;
@@ -71,6 +72,15 @@ void Host::LuaDestroying(lua_State* state) {
     for (auto it = m_order.rbegin(); it != m_order.rend(); ++it)
         if ((*it)->luaDestroying) (*it)->luaDestroying(state);
     m_lua = nullptr;
+    m_uiReady = false;
+    m_dispatching = false;
+}
+
+void Host::UIReady() {
+    if (!m_running || m_dispatching || !m_lua || m_uiReady) return;
+    m_uiReady = true;
+    m_dispatching = true;
+    for (const Module* module : m_order) if (module->uiReady) module->uiReady();
     m_dispatching = false;
 }
 

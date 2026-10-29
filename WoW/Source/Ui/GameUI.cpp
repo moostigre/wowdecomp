@@ -1,3 +1,4 @@
+#include "Modules/ModuleHost.h"
 #include "GameUI.h"
 #include "WoW/Source/DB/Rec/FileDataRec.h"
 #include "WoW/Source/DB/Rec/MovieFileDataRec.h"
@@ -1826,6 +1827,7 @@ void CGGameUI::InitializeFrameXML() {
     CGGameUI::HandleDisplaySizeChanged(sizeEvent);
 
     CGGameUI::m_initialized = 1;
+    ClientModules::GetHost().UIReady();
     EventRegister(EVENT_ID_IDLE, CGGameUI::Idle);
     g_theGxDevicePtr->AddDeviceRestoredCallback(UpdateAllPortraits);
     g_theGxDevicePtr->AddTextureRecreationCallback(UpdateAllPortraits);

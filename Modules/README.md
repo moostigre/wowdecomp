@@ -2,8 +2,8 @@
 
 Modules are C++17 sources compiled into the client, not injected DLLs. They do
 not alter the 3.3.5a protocol, talent limits, stock archives, or signature policy.
-No gameplay module is enabled by default. The three-specialization feature is a
-subsequent client/server change; this framework does not implement it.
+No gameplay module is enabled by default. Optional gameplay modules such as
+[X Specs](XSpecs/README.md) add their own client/server behavior.
 
 ## Add a module
 
@@ -59,14 +59,13 @@ Lua. A UI reload does not restart modules or the game session. Lua binding hooks
 must therefore work repeatedly and independently of gameStarted. Clients of the
 FrameScript library that do not start the module host receive no callbacks.
 
-## Scope for the next feature
+## Gameplay modules
 
-Three-spec support must extend player and inspect talent storage, packet count
-bounds, preview/activation APIs, glyphs and UI together. Pair it with server
-serialization and stock-client compatibility decisions. Do not register a second
-handler for a core opcode: NetClient currently has one handler slot per opcode.
-This framework deliberately provides no packet-hook abstraction or asset loader
-until their ownership/ordering contracts are implemented and tested.
+[X Specs](XSpecs/README.md) extends native talent storage, APIs and stock UI for
+server-driven 1–8 player specializations. Its server companion handles unlocks,
+activation, persistence and negotiated packet counts. Pet talent groups remain
+separate. Networking extensions must preserve core handlers: NetClient has one
+handler slot per opcode, so registering an existing opcode replaces its owner.
 
 ## Validation
 
@@ -84,3 +83,8 @@ These tests are independent of Windows and do not validate the full client.
 For a client build, use the repository's normal Windows/MSVC instructions; the
 same `WOW_MODULE_*` options apply. Verify login, game entry/exit, reconnect,
 `/reloadui`, and shutdown on Windows before shipping a feature module.
+
+`uiReady` is delivered once per Lua state after game FrameXML and addons have
+loaded, before game UI EnterWorld. Use it to create UI frames; Lua creation hooks
+remain the correct place for native API registration. See [X Specs](XSpecs/README.md)
+for the first gameplay extension, including the paired server requirements.

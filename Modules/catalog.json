@@ -4,8 +4,14 @@
     {
       "id": "example",
       "name": "Module framework example",
-      "description": "Validates module registration; does not change gameplay. Three specializations will appear here once implemented.",
+      "description": "Validates module registration; does not change gameplay.",
       "cmake_option": "WOW_MODULE_EXAMPLE"
+    },
+    {
+      "id": "x-specs",
+      "name": "X Specs — native specializations",
+      "description": "Native talent/glyph storage and UI for 1–8 server-configured specs, including five. Requires the matching mod-multispecs server extension.",
+      "cmake_option": "WOW_MODULE_XSPECS"
     }
   ]
 }

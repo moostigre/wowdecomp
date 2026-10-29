@@ -1,3 +1,7 @@
+#ifdef WOW_MODULE_XSPECS
+#include "Modules/XSpecs/XSpecs.h"
+#endif
+#include <cmath>
 #include "TalentInfo.h"
 #include <cstdint>
 #include "Engine/Source/FrameScript/FrameScript.h"
@@ -88,10 +92,17 @@ static int32_t Script_SetActiveTalentGroup(lua_State* L) {
         return 0;
     }
 
-    uint32_t group = static_cast<uint32_t>(lua_tonumber(L, 1)) - 1;
-
-    if (group != CGTalentInfo::m_activeTalentGroup && group < CGTalentInfo::m_numTalentGroups && group < 2) {
-        Spell_C_ClickSpell(s_activateTalentGroupSpells[group], nullptr, ClntObjMgrGetActivePlayer());
+    const double value = lua_tonumber(L, 1);
+    if (!std::isfinite(value) || value < 1 || value > TalentGroupCapacity || std::floor(value) != value) return 0;
+    const uint32_t group = static_cast<uint32_t>(value) - 1;
+    if (group != CGTalentInfo::m_activeTalentGroup && group < CGTalentInfo::m_numTalentGroups) {
+#ifdef WOW_MODULE_XSPECS
+        if (group >= 2) {
+            ClientModules::XSpecs::Activate(group + 1);
+            return 0;
+        }
+#endif
+        if (group < 2) Spell_C_ClickSpell(s_activateTalentGroupSpells[group], nullptr, ClntObjMgrGetActivePlayer());
     }
 
     return 0;
@@ -603,14 +614,11 @@ static int32_t Script_GetPreviewTalentPointsSpent(lua_State* L) {
         return 0;
     }
 
-    lua_tointeger(L, 1);
-    StringToBOOL(L, 2, 0);
-
-    if (lua_isnumber(L, 3)) {
-        lua_tointeger(L, 3);
-    }
-
-    lua_pushinteger(L, 0);
+    const uint32_t tabIndex = static_cast<uint32_t>(lua_tointeger(L, 1)) - 1;
+    const int32_t pet = StringToBOOL(L, 2, 0);
+    CGTalentGroup_C* group = CGTalentInfo::GetTalentGroup(TalentInfoGetScriptGroupIndex(L, 3), pet);
+    TalentGroupTab_C* tab = group ? group->GetTab(tabIndex) : nullptr;
+    lua_pushinteger(L, tab ? tab->m_previewPointsSpent : 0);
     return 1;
 }
 

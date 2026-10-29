@@ -7,6 +7,7 @@
 using namespace ClientModules;
 static std::vector<std::string> events;
 #define CHECK(value) do { if (!(value)) { std::cerr << "Failed: " #value " at line " << __LINE__ << '\n'; std::exit(1); } } while (0)
+static void UIReady() { events.push_back("ui.ready"); }
 static void AStart() { events.push_back("a.start"); }
 static void AStop() { events.push_back("a.stop"); }
 static void BStart() { events.push_back("b.start"); }
@@ -18,7 +19,7 @@ static void GameDown() { events.push_back("game-"); }
 
 int main() {
     std::string error;
-    const Module a{"a", "1", {}, AStart, LuaUp, LuaDown, GameUp, GameDown, AStop};
+    const Module a{"a", "1", {}, AStart, LuaUp, LuaDown, GameUp, GameDown, AStop, UIReady};
     const Module b{"b", "1", {"a"}, BStart, nullptr, nullptr, nullptr, nullptr, BStop};
     Host host;
     CHECK(host.Register(b, error));
@@ -35,17 +36,19 @@ int main() {
     auto* l2 = reinterpret_cast<lua_State*>(&second);
     host.LuaCreated(nullptr);
     host.LuaCreated(l1);
+    host.UIReady(); host.UIReady();
     host.LuaCreated(l1);
     host.GameStarted(571);
     host.GameStarted(571);
     host.LuaDestroying(l2); // A foreign state must not detach the current state.
     host.LuaDestroying(l1);
     host.LuaCreated(l2); // /reloadui: rebind without restarting the game.
+    host.UIReady();
     host.Stop(); // Also tears down an active game and Lua attachment.
     host.Stop();
     host.LuaDestroying(l2);
     host.GameStarted(571);
-    CHECK((events == std::vector<std::string>{"a.start", "b.start", "lua+", "game+", "lua-", "lua+", "game-", "lua-", "b.stop", "a.stop"}));
+    CHECK((events == std::vector<std::string>{"a.start", "b.start", "lua+", "ui.ready", "game+", "lua-", "lua+", "ui.ready", "game-", "lua-", "b.stop", "a.stop"}));
     CHECK(host.Start(error)); // A stopped host can start again.
     host.LuaCreated(l1);
     host.LuaCreated(l2); // Replacement is paired even without an explicit detach.

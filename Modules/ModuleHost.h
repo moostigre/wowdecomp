@@ -21,6 +21,7 @@ struct Module {
     void (*gameStarted)(uint32_t mapId) = nullptr;
     void (*gameStopping)() = nullptr;
     void (*stop)() = nullptr;
+    void (*uiReady)() = nullptr;
 };
 
 class Host {
@@ -32,6 +33,7 @@ public:
     bool Start(std::string& error);
     void LuaCreated(lua_State* state);
     void LuaDestroying(lua_State* state);
+    void UIReady();
     void GameStarted(uint32_t mapId);
     void GameStopping();
     void Stop();
@@ -44,6 +46,7 @@ private:
     lua_State* m_lua = nullptr;
     bool m_running = false;
     bool m_game = false;
+    bool m_uiReady = false;
     bool m_dispatching = false;
 };
 
