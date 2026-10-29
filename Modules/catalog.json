@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "modules": [
+    {
+      "id": "example",
+      "name": "Module framework example",
+      "description": "Validates module registration; does not change gameplay. Three specializations will appear here once implemented.",
+      "cmake_option": "WOW_MODULE_EXAMPLE"
+    }
+  ]
+}
