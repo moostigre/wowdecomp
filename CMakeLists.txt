@@ -69,6 +69,12 @@ if (EXISTS ${CMAKE_SOURCE_DIR}/ThirdParty/CMakeLists.txt)
     add_subdirectory(ThirdParty)
 endif ()
 
+option(WOW_MODULE_TESTS "Build portable client module lifecycle tests" OFF)
+if (WOW_MODULE_TESTS)
+    enable_testing()
+endif ()
+add_subdirectory(Modules)
+
 add_subdirectory(Engine/Source/BLPFile)
 add_subdirectory(Engine/Source/Base)
 add_subdirectory(Engine/Source/BlizzardCore)

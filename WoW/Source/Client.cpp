@@ -1,3 +1,4 @@
+#include "Modules/ModuleHost.h"
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -508,6 +509,7 @@ void ZoneDebugDestroy() {
 // VERIFY: a6d33d4d auto
 // OFFSET: 0x00402910
 static void WowClientDestroy() {
+    ClientModules::GetHost().Stop();
     ValidateNameDestroy();
     DeclinedWordsDestroy();
     SpellVisualsShutdown();
@@ -1011,6 +1013,15 @@ static void InitializeClient() {
     ClientRegisterConsoleCommands();
     ClientDBInitialize();
     LoadingScreenInitialize();
+    static bool modulesRegistered = false;
+    std::string moduleError;
+    if (!modulesRegistered) {
+        modulesRegistered = ClientModules::RegisterBuiltInModules(ClientModules::GetHost(), moduleError);
+    }
+    if (!modulesRegistered || !ClientModules::GetHost().Start(moduleError)) {
+        DebugLog("Client module startup failed: %s", moduleError.c_str());
+        std::abort();
+    }
     FrameScript_Initialize(0);
     SI2::Init(0);
     ObjectEffectSystem_Initialize();
@@ -1346,6 +1357,7 @@ void ClientInitializeGame(uint32_t mapId, C3Vector position) {
     s_botCheckEnabled = 1;
     BattlenetUI_EnterRealm();
     s_gameInitialized = 1;
+    ClientModules::GetHost().GameStarted(mapId);
 }
 
 // VERIFY: a768ccd6 manual
@@ -1551,6 +1563,7 @@ void ClientDestroyGame(int32_t charSelect, int32_t resumeGlue, int32_t worldLogi
         return;
     }
 
+    ClientModules::GetHost().GameStopping();
     s_botCheckEnabled = 0;
     EventUnregister(EVENT_ID_IDLE, ClientIdle);
     ClientServices::ClearMessageHandler(SMSG_NOTIFICATION);

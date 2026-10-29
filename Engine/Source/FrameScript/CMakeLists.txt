@@ -8,3 +8,6 @@ target_include_directories(FrameScript
     PUBLIC
         ${CMAKE_SOURCE_DIR}
 )
+
+# Lifecycle notifications use the portable module host.
+target_link_libraries(FrameScript PUBLIC ClientModules)

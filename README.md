@@ -107,3 +107,9 @@ logger off in `WowClient` with `-DWOWCLIENT_CRASH_LOG=OFF`.
 - TOMRUS, for the initial IDB
 - Everyone who has reported bugs so far
 - The WoW modding community
+
+## Native client modules
+
+Optional source-level client features are registered through CMake and linked
+into the executable. See [Modules/README.md](Modules/README.md) for lifecycle
+hooks, dependency declarations, an example module, and portable tests.
