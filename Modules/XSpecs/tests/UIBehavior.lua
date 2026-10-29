@@ -52,6 +52,7 @@ end
 -- C++ executes the real embedded module script here, then invokes this check.
 function CheckXSpecsUI()
     assert(messages==1)
+    for i=1,8 do assert(TALENT_ACTIVATION_SPELLS[i]==63645) end
     for i=1,8 do assert(TALENT_SORT_ORDER[i]=='spec'..i) end
     assert(TALENT_SORT_ORDER[9]=='petspec1')
     for _,n in ipairs({1,2,3,5,8}) do

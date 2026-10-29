@@ -97,12 +97,10 @@ static int32_t Script_SetActiveTalentGroup(lua_State* L) {
     const uint32_t group = static_cast<uint32_t>(value) - 1;
     if (group != CGTalentInfo::m_activeTalentGroup && group < CGTalentInfo::m_numTalentGroups) {
 #ifdef WOW_MODULE_XSPECS
-        if (group >= 2) {
-            ClientModules::XSpecs::Activate(group + 1);
-            return 0;
-        }
-#endif
+        ClientModules::XSpecs::Activate(group + 1);
+#else
         if (group < 2) Spell_C_ClickSpell(s_activateTalentGroupSpells[group], nullptr, ClntObjMgrGetActivePlayer());
+#endif
     }
 
     return 0;

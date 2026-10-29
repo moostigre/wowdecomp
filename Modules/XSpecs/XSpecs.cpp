@@ -60,7 +60,9 @@ local function Install()
         local number = tab:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
         number:SetPoint("BOTTOMRIGHT",tab,"BOTTOMRIGHT",0,0)
         number:SetText(group)
-        if TALENT_ACTIVATION_SPELLS then TALENT_ACTIVATION_SPELLS[group]=63645 end
+    end
+    if TALENT_ACTIVATION_SPELLS then
+        for group=1,cap do TALENT_ACTIVATION_SPELLS[group]=63645 end
     end
     -- Keep all player specs and the separate pet tab within the frame height.
     hooksecurefunc("PlayerTalentFrame_UpdateSpecs", function()

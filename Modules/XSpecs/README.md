@@ -22,9 +22,10 @@ Multispecs.UnlockLevels = "1,10,40,40,40"
 
 The built-in client negotiates protocol version 1/capacity 8 using the existing
 addon-message transport (`SWPXSPEC`, `HELLO 1 8`). The server then sends the normal
-talent packet layout with the negotiated number of groups. Switching slots 3–8
+talent packet layout with the negotiated number of groups. Switching slots 1–8
 uses `SWPXSPEC SWITCH N`; the server validates unlocks and player state and casts
-the usual specialization activation spell. Slots 1–2 retain their native spells.
+the usual specialization activation spell. This also works for automatically unlocked characters that have not learned
+Blizzard’s activation spells.
 
 Unmodified clients receive at most two native groups. If their active character
 slot is higher, the server projects that slot into the first visible group.
